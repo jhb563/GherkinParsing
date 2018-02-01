@@ -33,6 +33,7 @@ library
     , containers
     , scientific
   exposed-modules:
+      Parser
       Types
   other-modules:
       Paths_GherkinParsing
@@ -58,6 +59,8 @@ test-suite GherkinParsing-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       GherkinParsing
+    , directory
+    , hspec
     , base >=4.7 && <5
   other-modules:
       TestLoginFeatures
