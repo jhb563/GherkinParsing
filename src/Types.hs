@@ -1,18 +1,17 @@
 module Types where
 
-import qualified Data.Map as Map
-import           Data.Scientific (Scientific)
+import Data.Scientific (Scientific)
 
 data Feature = Feature
   { featureTitle :: String
   , featureDescription :: [String]
-  , featureBackground :: ExampleTable
+  , featureBackground :: Maybe Scenario
   , featureScenarios :: [Scenario]
   }
 
 data Scenario = Scenario
   { scenarioTitle :: String
-  , scenarioStatements :: Statement
+  , scenarioStatements :: [Statement]
   , scenarioExamples :: ExampleTable
   }
 
@@ -23,7 +22,7 @@ data Statement = Statement
 
 data ExampleTable = ExampleTable
   { exampleTableKeys :: [String]
-  , exampleTableExamples :: Map.Map String Value
+  , exampleTableExamples :: [[(String, Value)]]
   }
 
 data Value =

@@ -60,5 +60,9 @@ test-suite GherkinParsing-test
       GherkinParsing
     , base >=4.7 && <5
   other-modules:
+      TestLoginFeatures
+      TestRegistrationFeatures
+      TestWithdrawalFeatures
+      Utils
       Paths_GherkinParsing
   default-language: Haskell2010
