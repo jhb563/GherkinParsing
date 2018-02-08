@@ -6,11 +6,6 @@ import Utils
 registrationFeature :: Feature
 registrationFeature = Feature
   { featureTitle = "Registering a user"
-  , featureDescription =
-    [ "Users should be able to register when successfully filling in the form."
-    , "Their emails should satisfy an email regex"
-    , "Their passwords should be at least 10 characters long, and have a letter, number, and symbol"
-    ]
   , featureBackground = Nothing
   , featureScenarios = 
     [ successfulRegistration
@@ -37,7 +32,7 @@ regExamples1 = ExampleTable
   { exampleTableKeys = allKeywords
   , exampleTableExamples =
     [ mkExample "john doe" "john@doe.com" "ABCD1234!?"
-    , mkExample "jane doe" "jane@doe.com" "abcdefgh1.aba"
+    , mkExample "jane doe" "jane.doe@gmail.com" "abcdefgh1.aba"
     , mkExample "jackson" "jackson@yahoo.com" "cadsw4ll0p/"
     ]
   }
@@ -91,7 +86,7 @@ invalidPassword = Scenario
     [ Statement "I register an account with username <username>, email <email> and password <password>" allKeywords
     , Statement "It should fail with an error: \"That password is invalid\"" []
     ]
-  , scenarioExamples = regExamples2
+  , scenarioExamples = regExamples3
   }
 
 regExamples3 :: ExampleTable
@@ -99,8 +94,8 @@ regExamples3 = ExampleTable
   { exampleTableKeys = allKeywords
   , exampleTableExamples =
     [ mkExample "john doe" "john@doe.com" "abc.efghijk"
-    , mkExample "john doe" "john@doe.com" "123456789!"
-    , mkExample "john doe" "john@doe.com" "abCD!/A?las!?"
+    , mkExample "john doe" "john@doe.com" "!123456789"
+    , mkExample "john doe" "john@doe.com" "abCD!/A?las"
     , mkExample "john doe" "john@doe.com" "abcd12?."
     ]
   }

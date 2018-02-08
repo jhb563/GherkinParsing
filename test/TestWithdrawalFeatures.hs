@@ -6,11 +6,6 @@ import Utils
 withdrawalFeature :: Feature
 withdrawalFeature = Feature
   { featureTitle = "Account Withdrawal"
-  , featureDescription =
-    [ "The user should be able to withdraw an amount of money up to their account balance"
-    , "The user should not be able to withdraw more than their balance"
-    , "Users must be logged in in order to withdraw"
-    ]
   , featureBackground = Just backgroundScenario
   , featureScenarios = 
     [ unauthedWithdrawal
@@ -35,7 +30,7 @@ unauthedWithdrawal = Scenario
     [ Statement "user \"test\" has $200 in their account" []
     , Statement "I am an unauthenticated user" []
     , Statement "I try to withdraw $100 from the user \"test\"" []
-    , Statement "it should fail with an error: \"You aren't logged in\"" []
+    , Statement "It should fail with an error: \"You aren't logged in\"" []
     ]
   , scenarioExamples = ExampleTable [] []
   }
@@ -60,7 +55,7 @@ overdraw = Scenario
     [ Statement "user \"test\" has $300 in their account" []
     , Statement "I am logged in as \"test\"" []
     , Statement "I try to withdraw $400 from the user \"test\"" []
-    , Statement "it should fail with an error: \"You don't have enough money in your account for that withdrawal\"" []
+    , Statement "It should fail with an error: \"You don't have enough money in your account for that withdrawal\"" []
     ]
   , scenarioExamples = ExampleTable [] []
   }

@@ -4,7 +4,6 @@ import Data.Scientific (Scientific)
 
 data Feature = Feature
   { featureTitle :: String
-  , featureDescription :: [String]
   , featureBackground :: Maybe Scenario
   , featureScenarios :: [Scenario]
   }

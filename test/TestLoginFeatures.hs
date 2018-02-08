@@ -6,11 +6,6 @@ import Utils
 loginFeature :: Feature
 loginFeature = Feature
   { featureTitle = "User Log In"
-  , featureDescription =
-    [ "Users should be able to log in with their email and password"
-    , "They should also be able to log in with their username and password"
-    , "Invalid passwords should fail"
-    ]
   , featureBackground = Just backgroundScenario
   , featureScenarios = 
     [ emailLogin
@@ -74,7 +69,7 @@ wrongPassword :: Scenario
 wrongPassword = Scenario
   { scenarioTitle = "Wrong Password"
   , scenarioStatements =
-    [ Statement "the user logs in with username \"test\" and password \"ABCD4321@#\"" []
+    [ Statement "the user logs in with email \"test@test.com\" and password \"ABCD4321@#\"" []
     , Statement "the login attempt should fail with error: \"We couldn't find that account information\"" []
     ]
   , scenarioExamples = ExampleTable [] []
