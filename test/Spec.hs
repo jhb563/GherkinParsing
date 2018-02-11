@@ -47,25 +47,28 @@ withdrawalSpec featureFile = describe "Parse Withdrawal Feature" $ do
 exampleTableSpec :: Spec
 exampleTableSpec = describe "Parse Simple Example Table" $ do
   it "Should match the expected table" $
-    shouldMatch parseExamples sampleExamples producedExample
+    shouldMatch exampleTableParser sampleExamples producedExample
 
 valueSpec :: Spec
 valueSpec = describe "Parse Single Values" $ do
   context "When the value is null" $
     it "Should be a null value" $
-      shouldMatch parseValue "null" ValueNull
+      shouldMatch valueParser "null" ValueNull
   context "When the value is a true boolean" $
     it "Should be ValueBool True" $
-      shouldMatch parseValue "True" (ValueBool True)
+      shouldMatch valueParser "True" (ValueBool True)
   context "When the value is a false boolean" $
     it "Should be ValueBool False" $
-      shouldMatch parseValue "false" (ValueBool False)
+      shouldMatch valueParser "false" (ValueBool False)
   context "When the value is a number" $
     it "Should be a value number" $
-      shouldMatch parseValue "1234" (ValueNumber 1234)
+      shouldMatch valueParser "1234" (ValueNumber 1234)
+  context "When the value is a decimal number" $
+    it "Should be a value number" $
+      shouldMatch valueParser "1234.5123" (ValueNumber 1234.5123)
   context "When the value is anything else" $
     it "Should be a value string" $
-      shouldMatch parseValue "ABCD1234!?" (ValueString "ABCD1234!?")
+      shouldMatch valueParser "ABCD1234!?" (ValueString "ABCD1234!?")
 
 sampleExamples :: String
 sampleExamples = unlines

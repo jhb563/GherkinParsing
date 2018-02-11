@@ -19,7 +19,7 @@ parseFeatureFromFile inputFile = do
 
 parseFeature :: String -> Maybe Feature
 parseFeature input = input =~
-  Feature <$> parseFeatureTitleLine <*> optional backgroundParser <*> many parseScenario <* many anySym
+  Feature <$> parseFeatureTitleLine <*> optional backgroundParser <*> many scenarioParser <* many anySym
 
 parseFeatureTitleLine :: RE Char String
 parseFeatureTitleLine = string "Feature: " *> readThroughEndOfLine
@@ -27,13 +27,13 @@ parseFeatureTitleLine = string "Feature: " *> readThroughEndOfLine
 backgroundParser :: RE Char Scenario
 backgroundParser = (string "Background:" *> readThroughEndOfLine) *>
   (Scenario "Background" <$> many (parseStatement <* sym '\n')
-  <*> (parseExamples <|> pure (ExampleTable [] [])))
+  <*> (exampleTableParser <|> pure (ExampleTable [] [])))
 
-parseScenario :: RE Char Scenario
-parseScenario = Scenario <$> 
+scenarioParser :: RE Char Scenario
+scenarioParser = Scenario <$> 
   (string "Scenario: " *> readThroughEndOfLine)
   <*> many (parseStatement <* sym '\n')
-  <*> (parseExamples <|> pure (ExampleTable [] []))
+  <*> (exampleTableParser <|> pure (ExampleTable [] []))
 
 parseStatement :: RE Char Statement
 parseStatement =
@@ -62,42 +62,60 @@ nonBrackets = many (psym (\c -> c /= '\n' && c /= '<'))
 insideBrackets :: RE Char String
 insideBrackets = sym '<' *> many (psym (/= '>')) <* sym '>'
 
-parseExamples :: RE Char ExampleTable
-parseExamples = convertExampleBuilder <$>
-  (string "Examples:" *>
-  readThroughEndOfLine *>
-  ((,) <$> exampleColumnTitleLine <*> many exampleLine))
-
-convertExampleBuilder :: ([String], [[Value]]) -> ExampleTable
-convertExampleBuilder (keys, values) = ExampleTable keys examples
+exampleTableParser :: RE Char ExampleTable
+exampleTableParser = buildExampleTable <$>
+  (string "Examples:" *> readThroughEndOfLine *>
+  exampleColumnTitleLineParser) <*>
+  many exampleLineParser
   where
-    examples = map (zip keys) values
+    buildExampleTable :: [String] -> [[Value]] -> ExampleTable
+    buildExampleTable keys valueLists = ExampleTable keys (map (zip keys) valueLists)
 
-exampleColumnTitleLine :: RE Char [String]
-exampleColumnTitleLine =
-  sym '|' *> many readExampleColumnTitle <* sym '\n'
+exampleColumnTitleLineParser :: RE Char [String]
+exampleColumnTitleLineParser = sym '|' *> many cellParser <* sym '\n'
+  where
+    cellParser = many isNonNewlineSpace *> many (psym isAlpha) <* readThroughBar
 
-readExampleColumnTitle :: RE Char String
-readExampleColumnTitle = trim <$> readThroughBar
+exampleLineParser :: RE Char [Value]
+exampleLineParser = sym '|' *> many cellParser <* sym '\n'
+  where
+    cellParser = many isNonNewlineSpace *> valueParser <* readThroughBar
 
-exampleLine :: RE Char [Value]
-exampleLine =
-  sym '|' *> many readExample <* sym '\n'
+isNonNewlineSpace :: RE Char Char
+isNonNewlineSpace = psym (\c -> isSpace c && c /= '\n')
 
-readExample :: RE Char Value
-readExample = spaces *> parseValue <* readThroughBar
+valueParser :: RE Char Value
+valueParser =
+  nullParser <|>
+  boolParser <|>
+  numberParser <|>
+  stringParser
 
-parseValue :: RE Char Value
-parseValue =
-  string "null" *> pure ValueNull <|>
-  string "NULL" *> pure ValueNull <|>
-  string "Null" *> pure ValueNull <|>
-  string "false" *> pure (ValueBool False) <|>
-  string "False" *> pure (ValueBool False) <|>
-  string "true" *> pure (ValueBool True) <|>
-  string "True" *> pure (ValueBool True) <|>
-  (ValueNumber . read <$> some (psym isNumber)) <|>
-  (ValueString . trim <$> readUntilBar)
+nullParser :: RE Char Value
+nullParser =
+  (string "null" <|>
+  string "NULL" <|>
+  string "Null") *> pure ValueNull
+
+boolParser :: RE Char Value
+boolParser = trueParser *> pure (ValueBool True) <|> falseParser *> pure (ValueBool False)
+  where
+    trueParser = string "True" <|> string "true" <|> string "TRUE"
+    falseParser = string "False" <|> string "false" <|> string "FALSE"
+
+numberParser :: RE Char Value
+numberParser = (ValueNumber . read) <$>
+  (negativeParser <|> decimalParser <|> integerParser)
+  where
+    integerParser = some (psym isNumber)
+    decimalParser = combineDecimal <$> many (psym isNumber) <*> sym '.' <*> some (psym isNumber)
+    negativeParser = (:) <$> sym '-' <*> (decimalParser <|> integerParser)
+
+    combineDecimal :: String -> Char -> String -> String
+    combineDecimal base point decimal = base ++ (point : decimal)
+
+stringParser :: RE Char Value
+stringParser = (ValueString . trim) <$> readUntilBar
 
 isEmpty :: String -> Bool
 isEmpty = all isSpace
