@@ -1,9 +1,14 @@
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
+
 module Parser where
 
+import Data.Attoparsec.Text (Parser, scientific, takeTill)
+import qualified Data.Attoparsec.Text as A
 import Data.Char
 import Data.Monoid
 import Text.Regex.Applicative
+import Data.Text (strip, unpack)
 
 import Types
 
@@ -116,6 +121,31 @@ numberParser = (ValueNumber . read) <$>
 
 stringParser :: RE Char Value
 stringParser = (ValueString . trim) <$> readUntilBar
+
+valueParser' :: Parser Value
+valueParser' =
+  nullParser' <|>
+  boolParser' <|>
+  numberParser' <|>
+  stringParser'
+
+nullParser' :: Parser Value
+nullParser' =
+  (A.string "null" <|>
+  A.string "NULL" <|>
+  A.string "Null") >> return ValueNull
+
+boolParser' :: Parser Value
+boolParser' = (trueParser >> return (ValueBool True)) <|> (falseParser >> return (ValueBool False))
+  where
+    trueParser = A.string "True" <|> A.string "true" <|> A.string "TRUE"
+    falseParser = A.string "False" <|> A.string "false" <|> A.string "FALSE"
+
+numberParser' :: Parser Value
+numberParser' = ValueNumber <$> scientific
+
+stringParser' :: Parser Value
+stringParser' = (ValueString . unpack . strip) <$> takeTill (\c -> c == '|' || c == '\n')
 
 isEmpty :: String -> Bool
 isEmpty = all isSpace
