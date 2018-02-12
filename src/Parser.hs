@@ -3,7 +3,7 @@
 
 module Parser where
 
-import Data.Attoparsec.Text (Parser, scientific, takeTill)
+import Data.Attoparsec.Text (Parser, scientific, takeTill, char, skipWhile, letter)
 import qualified Data.Attoparsec.Text as A
 import Data.Char
 import Data.Monoid
@@ -85,6 +85,42 @@ exampleLineParser :: RE Char [Value]
 exampleLineParser = sym '|' *> many cellParser <* sym '\n'
   where
     cellParser = many isNonNewlineSpace *> valueParser <* readThroughBar
+
+exampleTableParser' :: Parser ExampleTable
+exampleTableParser' = do
+  A.string "Examples:"
+  consumeLine
+  keys <- exampleColumnTitleLineParser'
+  valueLists <- many exampleLineParser'
+  return $ ExampleTable keys (map (zip keys) valueLists)
+
+exampleColumnTitleLineParser' :: Parser [String]
+exampleColumnTitleLineParser' = do
+  char '|'
+  cells <- many cellParser
+  char '\n'
+  return cells
+  where
+    cellParser = do
+      skipWhile nonNewlineSpace
+      val <- many letter
+      skipWhile (not . barOrNewline)
+      char '|'
+      return val
+
+exampleLineParser' :: Parser [Value]
+exampleLineParser' = do
+  char '|'
+  cells <- many cellParser
+  char '\n'
+  return cells
+  where
+    cellParser = do
+      skipWhile nonNewlineSpace
+      val <- valueParser'
+      skipWhile (not . barOrNewline)
+      char '|'
+      return val
 
 isNonNewlineSpace :: RE Char Char
 isNonNewlineSpace = psym (\c -> isSpace c && c /= '\n')
@@ -171,3 +207,12 @@ trim input = reverse flippedTrimmed
     trimStart = dropWhile isSpace input
     flipped = reverse trimStart
     flippedTrimmed = dropWhile isSpace flipped
+
+barOrNewline :: Char -> Bool
+barOrNewline c = c == '|' || c == '\n'
+
+nonNewlineSpace :: Char -> Bool
+nonNewlineSpace c = isSpace c && c /= '\n'
+
+consumeLine :: Parser ()
+consumeLine = skipWhile (/= '\n') >> char '\n' >> return ()

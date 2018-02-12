@@ -6,7 +6,7 @@ import System.Directory
 import Test.Hspec
 
 import Data.Attoparsec.Text (IResult(..), parseOnly, Parser)
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import Parser
 import Text.Regex.Applicative
 import Types
@@ -54,7 +54,7 @@ withdrawalSpec featureFile = describe "Parse Withdrawal Feature" $ do
 exampleTableSpec :: Spec
 exampleTableSpec = describe "Parse Simple Example Table" $ do
   it "Should match the expected table" $
-    shouldMatch exampleTableParser sampleExamples producedExample
+    shouldMatch' exampleTableParser' (pack sampleExamples) producedExample
 
 valueSpec :: Spec
 valueSpec = describe "Parse Single Values" $ do
