@@ -3,12 +3,12 @@
 
 module Parser where
 
-import Data.Attoparsec.Text (Parser, scientific, takeTill, char, skipWhile, letter)
+import Data.Attoparsec.Text (Parser, scientific, takeTill, char, skipWhile, letter, satisfy, parseOnly)
 import qualified Data.Attoparsec.Text as A
 import Data.Char
 import Data.Monoid
 import Text.Regex.Applicative
-import Data.Text (strip, unpack)
+import Data.Text (strip, unpack, Text, pack)
 
 import Types
 
@@ -17,10 +17,10 @@ parseFeatureFromFile inputFile = do
   fileContents <- lines <$> readFile inputFile
   let nonEmptyLines = filter (not . isEmpty) fileContents
   let trimmedLines = map trim nonEmptyLines
-  let finalString = unlines trimmedLines
-  case parseFeature finalString of
-    Nothing -> error "Couldn't parse!"
-    Just feature -> return feature
+  let finalString = pack $ unlines trimmedLines
+  case parseOnly featureParser' finalString of
+    Left s -> error s
+    Right feature -> return feature
 
 parseFeature :: String -> Maybe Feature
 parseFeature input = input =~
@@ -29,16 +29,40 @@ parseFeature input = input =~
 parseFeatureTitleLine :: RE Char String
 parseFeatureTitleLine = string "Feature: " *> readThroughEndOfLine
 
+featureParser' :: Parser Feature
+featureParser' = do
+  A.string "Feature: "
+  title <- consumeLine
+  maybeBackground <- optional backgroundParser'
+  scenarios <- many scenarioParser'
+  return $ Feature title maybeBackground scenarios
+
 backgroundParser :: RE Char Scenario
 backgroundParser = (string "Background:" *> readThroughEndOfLine) *>
   (Scenario "Background" <$> many (parseStatement <* sym '\n')
   <*> (exampleTableParser <|> pure (ExampleTable [] [])))
+
+backgroundParser' :: Parser Scenario
+backgroundParser' = do
+  A.string "Background:"
+  consumeLine
+  statements <- many (parseStatement' <* char '\n')
+  examples <- (exampleTableParser' <|> return (ExampleTable [] []))
+  return $ Scenario "Background" statements examples
 
 scenarioParser :: RE Char Scenario
 scenarioParser = Scenario <$> 
   (string "Scenario: " *> readThroughEndOfLine)
   <*> many (parseStatement <* sym '\n')
   <*> (exampleTableParser <|> pure (ExampleTable [] []))
+
+scenarioParser' :: Parser Scenario
+scenarioParser' = do
+  A.string "Scenario: "
+  title <- consumeLine
+  statements <- many (parseStatement' <* char '\n')
+  examples <- (exampleTableParser' <|> return (ExampleTable [] []))
+  return $ Scenario title statements examples
 
 parseStatement :: RE Char Statement
 parseStatement =
@@ -66,6 +90,39 @@ nonBrackets = many (psym (\c -> c /= '\n' && c /= '<'))
 
 insideBrackets :: RE Char String
 insideBrackets = sym '<' *> many (psym (/= '>')) <* sym '>'
+
+parseStatement' :: Parser Statement
+parseStatement' =
+  parseStatementLine' "Given" <|>
+  parseStatementLine' "When" <|>
+  parseStatementLine' "Then" <|>
+  parseStatementLine' "And"
+
+parseStatementLine' :: Text -> Parser Statement
+parseStatementLine' signal = do
+  A.string signal
+  char ' '
+  pairs <- many ((,) <$> nonBrackets' <*> insideBrackets')
+  finalString <- nonBrackets'
+  let (fullString, keys) = buildStatement pairs finalString
+  return $ Statement fullString keys
+  where
+    buildStatement :: [(String, String)] -> String -> (String, [String])
+    buildStatement [] last = (last, [])
+    buildStatement ((str, key) : rest) rem =
+      let (str', keys) = buildStatement rest rem
+      in (str <> "<" <> key <> ">" <> str', key : keys)
+
+nonBrackets' :: Parser String
+nonBrackets' = many (satisfy (\c -> c /= '\n' && c /= '<'))
+
+insideBrackets' :: Parser String
+insideBrackets' = do
+  char '<'
+  key <- many letter
+  char '>'
+  return key
+  
 
 exampleTableParser :: RE Char ExampleTable
 exampleTableParser = buildExampleTable <$>
@@ -214,5 +271,8 @@ barOrNewline c = c == '|' || c == '\n'
 nonNewlineSpace :: Char -> Bool
 nonNewlineSpace c = isSpace c && c /= '\n'
 
-consumeLine :: Parser ()
-consumeLine = skipWhile (/= '\n') >> char '\n' >> return ()
+consumeLine :: Parser String
+consumeLine = do
+  str <- A.takeWhile (/= '\n')
+  char '\n'
+  return (unpack str)

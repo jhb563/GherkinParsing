@@ -98,18 +98,18 @@ statementSpec :: Spec
 statementSpec = describe "Parse Statements" $ do
   context "When it's a 'Given' statement with no variables" $
     it "Should parse correctly" $
-      shouldMatch parseStatement "Given There is no account with username x" (Statement "There is no account with username x" [])
+      shouldMatch' parseStatement' "Given There is no account with username x" (Statement "There is no account with username x" [])
   context "When it's a 'When' statement with a variable" $
     it "Should parse correctly" $
-      shouldMatch parseStatement "When I register with username <username>"
+      shouldMatch' parseStatement' "When I register with username <username>"
         (Statement "I register with username <username>" ["username"])
   context "When it's a 'Then' statement with two variables" $
     it "Should parse correctly" $
-      shouldMatch parseStatement "When I register with username <username> and email <email>"
+      shouldMatch' parseStatement' "When I register with username <username> and email <email>"
         (Statement "I register with username <username> and email <email>" ["username", "email"])
   context "When it's an 'And' statement with two variables" $
     it "Should parse correctly" $
-      shouldMatch parseStatement "And I register with username <username> and email <email>"
+      shouldMatch' parseStatement' "And I register with username <username> and email <email>"
         (Statement "I register with username <username> and email <email>" ["username", "email"])
 
 testFeaturesExtension :: FilePath
