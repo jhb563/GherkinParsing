@@ -31,8 +31,6 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
-    , regex-applicative
-    , attoparsec
     , megaparsec
     , scientific
     , text
@@ -63,11 +61,9 @@ test-suite GherkinParsing-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       GherkinParsing
-    , attoparsec
     , directory
     , hspec
     , megaparsec
-    , regex-applicative
     , text
     , base >=4.7 && <5
   other-modules:

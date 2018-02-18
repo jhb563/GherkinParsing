@@ -4,7 +4,6 @@
 module Parser where
 
 import Control.Applicative
-import Data.Attoparsec.Text hiding (integerParser, decimalParser)
 import Data.Char
 import Data.Monoid
 import Data.Text (strip, unpack, Text, pack)
@@ -23,70 +22,46 @@ parseFeatureFromFile inputFile = do
   let nonEmptyLines = filter (not . isEmpty) fileContents
   let trimmedLines = map trim nonEmptyLines
   let finalString = pack $ unlines trimmedLines
-  case M.runParser featureParser' inputFile finalString of
+  case M.runParser featureParser inputFile finalString of
     Left s -> error (show s)
     Right feature -> return feature
 
-featureParser :: Parser Feature
+featureParser :: MParser Feature
 featureParser = do
-  string "Feature: "
+  M.string "Feature: "
   title <- consumeLine
   maybeBackground <- optional backgroundParser
   scenarios <- many scenarioParser
   return $ Feature title maybeBackground scenarios
 
-backgroundParser :: Parser Scenario
+backgroundParser :: MParser Scenario
 backgroundParser = do
-  string "Background:"
-  consumeLine
-  statements <- many (parseStatement <* char '\n')
-  examples <- (exampleTableParser <|> return (ExampleTable [] []))
-  return $ Scenario "Background" statements examples
-
-scenarioParser :: Parser Scenario
-scenarioParser = do
-  string "Scenario: "
-  title <- consumeLine
-  statements <- many (parseStatement <* char '\n')
-  examples <- (exampleTableParser <|> return (ExampleTable [] []))
-  return $ Scenario title statements examples
-
-featureParser' :: MParser Feature
-featureParser' = do
-  M.string "Feature: "
-  title <- consumeLine'
-  maybeBackground <- optional backgroundParser'
-  scenarios <- many scenarioParser'
-  return $ Feature title maybeBackground scenarios
-
-backgroundParser' :: MParser Scenario
-backgroundParser' = do
   M.string "Background:"
-  consumeLine'
-  statements <- many (parseStatement' <* M.char '\n')
-  examples <- (exampleTableParser' <|> return (ExampleTable [] []))
+  consumeLine
+  statements <- many (parseStatement <* M.char '\n')
+  examples <- (exampleTableParser <|> return (ExampleTable [] []))
   return $ Scenario "Background" statements examples
 
-scenarioParser' :: MParser Scenario
-scenarioParser' = do
+scenarioParser :: MParser Scenario
+scenarioParser = do
   M.string "Scenario: "
-  title <- consumeLine'
-  statements <- many (parseStatement' <* M.char '\n')
-  examples <- (exampleTableParser' <|> return (ExampleTable [] []))
+  title <- consumeLine
+  statements <- many (parseStatement <* M.char '\n')
+  examples <- (exampleTableParser <|> return (ExampleTable [] []))
   return $ Scenario title statements examples
 
-parseStatement :: Parser Statement
+parseStatement :: MParser Statement
 parseStatement =
   parseStatementLine "Given" <|>
   parseStatementLine "When" <|>
   parseStatementLine "Then" <|>
   parseStatementLine "And"
 
-parseStatementLine :: Text -> Parser Statement
+parseStatementLine :: Text -> MParser Statement
 parseStatementLine signal = do
-  string signal
-  char ' '
-  pairs <- many ((,) <$> nonBrackets <*> insideBrackets)
+  M.string signal
+  M.char ' '
+  pairs <- many $ M.try ((,) <$> nonBrackets <*> insideBrackets)
   finalString <- nonBrackets
   let (fullString, keys) = buildStatement pairs finalString
   return $ Statement fullString keys
@@ -97,94 +72,26 @@ parseStatementLine signal = do
       let (str', keys) = buildStatement rest rem
       in (str <> "<" <> key <> ">" <> str', key : keys)
 
-nonBrackets :: Parser String
-nonBrackets = many (satisfy (\c -> c /= '\n' && c /= '<'))
+nonBrackets :: MParser String
+nonBrackets = many (M.satisfy (\c -> c /= '\n' && c /= '<'))
 
-insideBrackets :: Parser String
+insideBrackets :: MParser String
 insideBrackets = do
-  char '<'
-  key <- many letter
-  char '>'
-  return key
-
-parseStatement' :: MParser Statement
-parseStatement' =
-  parseStatementLine' "Given" <|>
-  parseStatementLine' "When" <|>
-  parseStatementLine' "Then" <|>
-  parseStatementLine' "And"
-
-parseStatementLine' :: Text -> MParser Statement
-parseStatementLine' signal = do
-  M.string signal
-  M.char ' '
-  pairs <- many $ M.try ((,) <$> nonBrackets' <*> insideBrackets')
-  finalString <- nonBrackets'
-  let (fullString, keys) = buildStatement pairs finalString
-  return $ Statement fullString keys
-  where
-    buildStatement :: [(String, String)] -> String -> (String, [String])
-    buildStatement [] last = (last, [])
-    buildStatement ((str, key) : rest) rem =
-      let (str', keys) = buildStatement rest rem
-      in (str <> "<" <> key <> ">" <> str', key : keys)
-
-nonBrackets' :: MParser String
-nonBrackets' = many (M.satisfy (\c -> c /= '\n' && c /= '<'))
-
-insideBrackets' :: MParser String
-insideBrackets' = do
   M.char '<'
   key <- many M.letterChar
   M.char '>'
   return key
 
-exampleTableParser :: Parser ExampleTable
+exampleTableParser :: MParser ExampleTable
 exampleTableParser = do
-  string "Examples:"
+  M.string "Examples:"
   consumeLine
   keys <- exampleColumnTitleLineParser
   valueLists <- many exampleLineParser
   return $ ExampleTable keys (map (zip keys) valueLists)
 
-exampleColumnTitleLineParser :: Parser [String]
+exampleColumnTitleLineParser :: MParser [String]
 exampleColumnTitleLineParser = do
-  char '|'
-  cells <- many cellParser
-  char '\n'
-  return cells
-  where
-    cellParser = do
-      skipWhile nonNewlineSpace
-      val <- many letter
-      skipWhile (not . barOrNewline)
-      char '|'
-      return val
-
-exampleLineParser :: Parser [Value]
-exampleLineParser = do
-  char '|'
-  cells <- many cellParser
-  char '\n'
-  return cells
-  where
-    cellParser = do
-      skipWhile nonNewlineSpace
-      val <- valueParser
-      skipWhile (not . barOrNewline)
-      char '|'
-      return val
-
-exampleTableParser' :: MParser ExampleTable
-exampleTableParser' = do
-  M.string "Examples:"
-  consumeLine'
-  keys <- exampleColumnTitleLineParser'
-  valueLists <- many exampleLineParser'
-  return $ ExampleTable keys (map (zip keys) valueLists)
-
-exampleColumnTitleLineParser' :: MParser [String]
-exampleColumnTitleLineParser' = do
   M.char '|'
   cells <- many cellParser
   M.char '\n'
@@ -197,8 +104,8 @@ exampleColumnTitleLineParser' = do
       M.char '|'
       return val
 
-exampleLineParser' :: MParser [Value]
-exampleLineParser' = do
+exampleLineParser :: MParser [Value]
+exampleLineParser = do
   M.char '|'
   cells <- many cellParser
   M.char '\n'
@@ -207,54 +114,29 @@ exampleLineParser' = do
     cellParser :: MParser Value
     cellParser = do
       many (M.satisfy nonNewlineSpace)
-      val <- valueParser'
+      val <- valueParser
       many (M.satisfy (not . barOrNewline))
       M.char '|'
       return val
 
-valueParser :: Parser Value
+valueParser :: MParser Value
 valueParser =
   nullParser <|>
   boolParser <|>
   numberParser <|>
   stringParser
 
-nullParser :: Parser Value
-nullParser =
-  (string "null" <|>
-  string "NULL" <|>
-  string "Null") *> pure ValueNull
+nullParser :: MParser Value
+nullParser = M.string' "null" >> return ValueNull
 
-boolParser :: Parser Value
-boolParser = (trueParser *> pure (ValueBool True)) <|> (falseParser *> pure (ValueBool False))
-  where
-    trueParser = string "True" <|> string "true" <|> string "TRUE"
-    falseParser = string "False" <|> string "false" <|> string "FALSE"
-
-numberParser :: Parser Value
-numberParser = ValueNumber <$> scientific
-
-stringParser :: Parser Value
-stringParser = (ValueString . unpack . strip) <$> takeTill (\c -> c == '|' || c == '\n')
-
-valueParser' :: MParser Value
-valueParser' = 
-  nullParser' <|>
-  boolParser' <|>
-  numberParser' <|>
-  stringParser'
-
-nullParser' :: MParser Value
-nullParser' = M.string' "null" >> return ValueNull
-
-boolParser' :: MParser Value
-boolParser' = (trueParser >> return (ValueBool True)) <|> (falseParser >> return (ValueBool False))
+boolParser :: MParser Value
+boolParser = (trueParser >> return (ValueBool True)) <|> (falseParser >> return (ValueBool False))
   where
     trueParser = M.string' "true"
     falseParser = M.string' "false"
 
-numberParser' :: MParser Value
-numberParser' = (ValueNumber . read) <$>
+numberParser :: MParser Value
+numberParser = (ValueNumber . read) <$>
   (negativeParser <|> decimalParser <|> integerParser)
   where
     integerParser :: MParser String
@@ -273,8 +155,8 @@ numberParser' = (ValueNumber . read) <$>
       num <- decimalParser <|> integerParser
       return $ '-' : num
 
-stringParser' :: MParser Value
-stringParser' = (ValueString . trim) <$>
+stringParser :: MParser Value
+stringParser = (ValueString . trim) <$>
   many (M.satisfy (not . barOrNewline))
 
 isEmpty :: String -> Bool
@@ -293,14 +175,8 @@ barOrNewline c = c == '|' || c == '\n'
 nonNewlineSpace :: Char -> Bool
 nonNewlineSpace c = isSpace c && c /= '\n'
 
-consumeLine :: Parser String
+consumeLine :: MParser String
 consumeLine = do
-  str <- Data.Attoparsec.Text.takeWhile (/= '\n')
-  char '\n'
-  return (unpack str)
-
-consumeLine' :: MParser String
-consumeLine' = do
   str <- many (M.satisfy (/= '\n'))
   M.char '\n'
   return str
