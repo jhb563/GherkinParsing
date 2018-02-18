@@ -119,6 +119,43 @@ exampleLineParser = do
       char '|'
       return val
 
+exampleTableParser' :: MParser ExampleTable
+exampleTableParser' = do
+  M.string "Examples:"
+  consumeLine'
+  keys <- exampleColumnTitleLineParser'
+  valueLists <- many exampleLineParser'
+  return $ ExampleTable keys (map (zip keys) valueLists)
+
+exampleColumnTitleLineParser' :: MParser [String]
+exampleColumnTitleLineParser' = do
+  M.char '|'
+  cells <- many cellParser
+  M.char '\n'
+  return cells
+  where
+    cellParser = do
+      many (M.satisfy nonNewlineSpace)
+      val <- many M.letterChar
+      many (M.satisfy (not . barOrNewline))
+      M.char '|'
+      return val
+
+exampleLineParser' :: MParser [Value]
+exampleLineParser' = do
+  M.char '|'
+  cells <- many cellParser
+  M.char '\n'
+  return cells
+  where
+    cellParser :: MParser Value
+    cellParser = do
+      many (M.satisfy nonNewlineSpace)
+      val <- valueParser'
+      many (M.satisfy (not . barOrNewline))
+      M.char '|'
+      return val
+
 valueParser :: Parser Value
 valueParser =
   nullParser <|>
@@ -205,3 +242,9 @@ consumeLine = do
   str <- Data.Attoparsec.Text.takeWhile (/= '\n')
   char '\n'
   return (unpack str)
+
+consumeLine' :: MParser String
+consumeLine' = do
+  str <- many (M.satisfy (/= '\n'))
+  M.char '\n'
+  return str
