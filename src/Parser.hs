@@ -4,12 +4,18 @@
 module Parser where
 
 import Control.Applicative
-import Data.Attoparsec.Text
+import Data.Attoparsec.Text hiding (integerParser, decimalParser)
 import Data.Char
 import Data.Monoid
 import Data.Text (strip, unpack, Text, pack)
+import Data.Void
+import Text.Megaparsec (Parsec)
+import qualified Text.Megaparsec as M
+import qualified Text.Megaparsec.Char as M
 
 import Types
+
+type MParser = Parsec Void Text
 
 parseFeatureFromFile :: FilePath -> IO Feature
 parseFeatureFromFile inputFile = do
@@ -124,10 +130,10 @@ nullParser :: Parser Value
 nullParser =
   (string "null" <|>
   string "NULL" <|>
-  string "Null") >> return ValueNull
+  string "Null") *> pure ValueNull
 
 boolParser :: Parser Value
-boolParser = (trueParser >> return (ValueBool True)) <|> (falseParser >> return (ValueBool False))
+boolParser = (trueParser *> pure (ValueBool True)) <|> (falseParser *> pure (ValueBool False))
   where
     trueParser = string "True" <|> string "true" <|> string "TRUE"
     falseParser = string "False" <|> string "false" <|> string "FALSE"
@@ -137,6 +143,46 @@ numberParser = ValueNumber <$> scientific
 
 stringParser :: Parser Value
 stringParser = (ValueString . unpack . strip) <$> takeTill (\c -> c == '|' || c == '\n')
+
+valueParser' :: MParser Value
+valueParser' = 
+  nullParser' <|>
+  boolParser' <|>
+  numberParser' <|>
+  stringParser'
+
+nullParser' :: MParser Value
+nullParser' = M.string' "null" >> return ValueNull
+
+boolParser' :: MParser Value
+boolParser' = (trueParser >> return (ValueBool True)) <|> (falseParser >> return (ValueBool False))
+  where
+    trueParser = M.string' "true"
+    falseParser = M.string' "false"
+
+numberParser' :: MParser Value
+numberParser' = (ValueNumber . read) <$>
+  (negativeParser <|> decimalParser <|> integerParser)
+  where
+    integerParser :: MParser String
+    integerParser = M.try (some M.digitChar)
+
+    decimalParser :: MParser String
+    decimalParser = M.try $ do
+      front <- many M.digitChar
+      M.char '.'
+      back <- some M.digitChar
+      return $ front ++ ('.' : back)
+
+    negativeParser :: MParser String
+    negativeParser = M.try $ do
+      M.char '-'
+      num <- decimalParser <|> integerParser
+      return $ '-' : num
+
+stringParser' :: MParser Value
+stringParser' = (ValueString . trim) <$>
+  many (M.satisfy (not . barOrNewline))
 
 isEmpty :: String -> Bool
 isEmpty = all isSpace
