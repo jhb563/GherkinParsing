@@ -23,8 +23,8 @@ parseFeatureFromFile inputFile = do
   let nonEmptyLines = filter (not . isEmpty) fileContents
   let trimmedLines = map trim nonEmptyLines
   let finalString = pack $ unlines trimmedLines
-  case parseOnly featureParser finalString of
-    Left s -> error s
+  case M.runParser featureParser' inputFile finalString of
+    Left s -> error (show s)
     Right feature -> return feature
 
 featureParser :: Parser Feature
@@ -49,6 +49,30 @@ scenarioParser = do
   title <- consumeLine
   statements <- many (parseStatement <* char '\n')
   examples <- (exampleTableParser <|> return (ExampleTable [] []))
+  return $ Scenario title statements examples
+
+featureParser' :: MParser Feature
+featureParser' = do
+  M.string "Feature: "
+  title <- consumeLine'
+  maybeBackground <- optional backgroundParser'
+  scenarios <- many scenarioParser'
+  return $ Feature title maybeBackground scenarios
+
+backgroundParser' :: MParser Scenario
+backgroundParser' = do
+  M.string "Background:"
+  consumeLine'
+  statements <- many (parseStatement' <* M.char '\n')
+  examples <- (exampleTableParser' <|> return (ExampleTable [] []))
+  return $ Scenario "Background" statements examples
+
+scenarioParser' :: MParser Scenario
+scenarioParser' = do
+  M.string "Scenario: "
+  title <- consumeLine'
+  statements <- many (parseStatement' <* M.char '\n')
+  examples <- (exampleTableParser' <|> return (ExampleTable [] []))
   return $ Scenario title statements examples
 
 parseStatement :: Parser Statement
