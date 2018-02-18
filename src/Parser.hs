@@ -83,6 +83,38 @@ insideBrackets = do
   char '>'
   return key
 
+parseStatement' :: MParser Statement
+parseStatement' =
+  parseStatementLine' "Given" <|>
+  parseStatementLine' "When" <|>
+  parseStatementLine' "Then" <|>
+  parseStatementLine' "And"
+
+parseStatementLine' :: Text -> MParser Statement
+parseStatementLine' signal = do
+  M.string signal
+  M.char ' '
+  pairs <- many $ M.try ((,) <$> nonBrackets' <*> insideBrackets')
+  finalString <- nonBrackets'
+  let (fullString, keys) = buildStatement pairs finalString
+  return $ Statement fullString keys
+  where
+    buildStatement :: [(String, String)] -> String -> (String, [String])
+    buildStatement [] last = (last, [])
+    buildStatement ((str, key) : rest) rem =
+      let (str', keys) = buildStatement rest rem
+      in (str <> "<" <> key <> ">" <> str', key : keys)
+
+nonBrackets' :: MParser String
+nonBrackets' = many (M.satisfy (\c -> c /= '\n' && c /= '<'))
+
+insideBrackets' :: MParser String
+insideBrackets' = do
+  M.char '<'
+  key <- many M.letterChar
+  M.char '>'
+  return key
+
 exampleTableParser :: Parser ExampleTable
 exampleTableParser = do
   string "Examples:"
