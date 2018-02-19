@@ -33,11 +33,11 @@ featureParser = do
   (description, maybeBackground, scenarios) <- parseRestOfFeature
   return $ Feature title description maybeBackground scenarios
 
-parseRestOfFeature :: Parser ([String], Maybe Scenario, [Scenario])
+parseRestOfFeature :: MParser ([String], Maybe Scenario, [Scenario])
 parseRestOfFeature = parseRestOfFeatureTail []
   where
     parseRestOfFeatureTail prevDesc = do
-      (fullDesc, maybeBG, scenarios) <- choice [noDescriptionLine prevDesc, descriptionLine prevDesc]
+      (fullDesc, maybeBG, scenarios) <- M.choice [noDescriptionLine prevDesc, descriptionLine prevDesc]
       return (fullDesc, maybeBG, scenarios)
 
     noDescriptionLine prevDesc = do
