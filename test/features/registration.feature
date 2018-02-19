@@ -1,4 +1,7 @@
 Feature: Registering a user
+  As a user
+  I want to register
+  So that I have an account
 
   Scenario: Successful Registration
     Given There is no account with username <username> or email <email>

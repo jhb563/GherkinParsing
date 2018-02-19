@@ -6,6 +6,11 @@ import Utils
 registrationFeature :: Feature
 registrationFeature = Feature
   { featureTitle = "Registering a user"
+  , featureDescription =
+      ["As a user"
+      , "I want to register"
+      , "So that I have an account"
+      ]
   , featureBackground = Nothing
   , featureScenarios = 
     [ successfulRegistration
