@@ -6,6 +6,7 @@ import Utils
 loginFeature :: Feature
 loginFeature = Feature
   { featureTitle = "User Log In"
+  , featureDescription = []
   , featureBackground = Just backgroundScenario
   , featureScenarios = 
     [ emailLogin

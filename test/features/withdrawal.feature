@@ -1,4 +1,7 @@
 Feature: Account Withdrawal
+  As a user
+  I want to withdraw from my account
+  So I can get money
 
   Background:
     Given There is an existing user with username "test", email "test@test.com" and password "abcd1234!?"

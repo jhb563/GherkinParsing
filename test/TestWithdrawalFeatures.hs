@@ -6,6 +6,11 @@ import Utils
 withdrawalFeature :: Feature
 withdrawalFeature = Feature
   { featureTitle = "Account Withdrawal"
+  , featureDescription =
+      [ "As a user"
+      , "I want to withdraw from my account"
+      , "So I can get money"
+      ]
   , featureBackground = Just backgroundScenario
   , featureScenarios = 
     [ unauthedWithdrawal
